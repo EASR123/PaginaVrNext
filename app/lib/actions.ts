@@ -7,6 +7,7 @@ import {redirect } from 'next/navigation';
 import postgres from 'postgres';
 
 const sql = postgres(process.env.POSTGRES_URL!,{ssl:'require'});
+export type AuthState = { ok: boolean; message?: string };
 
 const FormSchema = z.object({
   id: z.string(),
@@ -108,7 +109,7 @@ export async function deleteInvoice(id: string) {
   await sql`DELETE FROM invoices WHERE id = ${id}`;
   revalidatePath('/dashboard/invoices');
 }
-export async function authenticate(
+/*export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
 ) {
@@ -121,6 +122,27 @@ export async function authenticate(
           return 'Invalid credentials.';
         default:
           return 'Something went wrong.';
+      }
+    }
+    throw error;
+  }
+}*/
+export async function authenticate(prevState: AuthState, formData: FormData): Promise<AuthState> {
+  try {
+    await signIn('credentials', {
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      redirect: false, // Importante: no redirigir automáticamente
+    });
+    
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return { ok: false, message: 'Credenciales inválidas.' };
+        default:
+          return { ok: false, message: 'Algo salió mal.' };
       }
     }
     throw error;

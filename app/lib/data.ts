@@ -216,3 +216,6 @@ export async function fetchFilteredCustomers(query: string) {
     throw new Error('Failed to fetch customer table.');
   }
 }
+// Agrega esta función junto a las demás funciones de data
+
+

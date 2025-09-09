@@ -9,6 +9,30 @@ export type User = {
   password: string;
 };
 
+export type Usuarios = {
+  id: string;
+  correo: string;        // ← Cambiado de 'email' a 'correo'
+  nombre_completo: string; // ← Cambiado de 'name' a 'nombre_completo'
+  hash_password: string;
+  rol: string;
+  activo: boolean;
+};
+
+export type LatestUserRaw = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  created_at: string;
+  active: boolean;
+};
+
+export type LatestUser = {
+  id: string;
+  name: string;
+  created_at: string;
+}; 
+
 export type Customer = {
   id: string;
   name: string;
