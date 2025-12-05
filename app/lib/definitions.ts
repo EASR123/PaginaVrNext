@@ -11,8 +11,8 @@ export type User = {
 
 export type Usuarios = {
   id: string;
-  correo: string;        // ← Cambiado de 'email' a 'correo'
-  nombre_completo: string; // ← Cambiado de 'name' a 'nombre_completo'
+  correo: string;      
+  nombre_completo: string; 
   hash_password: string;
   rol: string;
   activo: boolean;

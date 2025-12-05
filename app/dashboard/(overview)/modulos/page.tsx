@@ -12,7 +12,7 @@ export default async function ModulosPage() {
         {mods.map((m) => (
           <a
             key={m.id}
-            href={`/dashboard/(overview)/modulos/${m.codigo}`}
+            href={`/dashboard/modulos/${m.codigo}`}
             className="block rounded-xl border p-4 hover:shadow"
           >
             <div className="flex items-center justify-between">

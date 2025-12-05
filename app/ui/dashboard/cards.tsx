@@ -1,40 +1,37 @@
 import {
-  BanknotesIcon,
-  ClockIcon,
   UserGroupIcon,
-  InboxIcon,
+  ClockIcon,
+  ChartBarIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { lusitana } from '@/app/ui/fonts';
 import { fetchCardData } from '@/app/lib/data';
 
 const iconMap = {
-  collected: BanknotesIcon,
-  customers: UserGroupIcon,
-  pending: ClockIcon,
-  invoices: InboxIcon,
+  users: UserGroupIcon,
+  sessions: ClockIcon,
+  errors: ChartBarIcon,
+  feedback: AcademicCapIcon,
 };
 
-
 export default async function CardWrapper() {
-   const {
-    numberOfInvoices,
-    numberOfCustomers,
-    totalPaidInvoices,
-    totalPendingInvoices,
+  const {
+    usersCount,
+    totalSessions,
+    avgSessionDuration,
+    avgSessionErrors,
+    totalFeedbacks,
+    avgFeedbackScore,
   } = await fetchCardData();
 
   return (
     <>
-      {/* NOTE: Uncomment this code in Chapter 9 */}
-
-      <Card title="Facturas Pagadas" value={totalPaidInvoices} type="collected" />
-      <Card title="Facturas Pendientes" value={totalPendingInvoices} type="pending" />
-      <Card title="Total de Facturas" value={numberOfInvoices} type="invoices" />
-      <Card
-        title="Total de Clientes"
-        value={numberOfCustomers}
-        type="customers"
-      /> 
+      <Card title="Usuarios Registrados" value={usersCount} type="users" />
+      <Card title="Sesiones VR" value={totalSessions} type="sessions" />
+      <Card title="Duración Promedio (s)" value={avgSessionDuration} type="sessions" />
+      <Card title="Errores Promedio" value={avgSessionErrors} type="errors" />
+      <Card title="Retroalimentaciones" value={totalFeedbacks} type="feedback" />
+      <Card title="Puntuación Promedio" value={avgFeedbackScore} type="feedback" />
     </>
   );
 }
@@ -46,7 +43,7 @@ export function Card({
 }: {
   title: string;
   value: number | string;
-  type: 'invoices' | 'customers' | 'pending' | 'collected';
+  type: 'users' | 'sessions' | 'errors' | 'feedback';
 }) {
   const Icon = iconMap[type];
 

@@ -1,57 +1,45 @@
-// app/dashboard/modulos/catalogo/page.tsx
-import { auth } from '@/auth';
+// app/dashboard/modulos/page.tsx
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { fetchUserByEmail } from '@/app/lib/users';
-import {
-  fetchModulosCatalogoAll,
-  fetchModulosCatalogoForUser,
-  ModuloCatalogo,
-} from '@/app/lib/modulos';
+import { fetchModulosCatalogo, ModuloCatalogo } from '@/app/lib/modulos';
 import Link from 'next/link';
 
+export const { auth } = NextAuth(authConfig);
 export const dynamic = 'force-dynamic';
 
-function fmtDate(d?: string | null) {
-  if (!d) return '—';
-  return new Date(d).toLocaleString();
-}
-
-function CreatedByCell({ creado_por_nombre, creado_por_correo }: ModuloCatalogo) {
-  if (!creado_por_nombre && !creado_por_correo) {
-    return <span className="text-gray-500">—</span>;
-  }
-  return (
-    <div className="leading-tight">
-      <div className="font-medium">{creado_por_nombre ?? '—'}</div>
-      <div className="text-xs text-gray-500">{creado_por_correo ?? '—'}</div>
-    </div>
-  );
-}
-
-/**
- * NOTA Next 15:
- * `searchParams` puede venir como Promise. Hay que await antes de leer .q
- */
 type SPObj = Record<string, string | string[] | undefined>;
 type SP = Promise<SPObj> | SPObj | undefined;
 
-export default async function CatalogoModulosPage({
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs capitalize">
+      {children}
+    </span>
+  );
+}
+
+function Minutes({ v }: { v: number | null }) {
+  if (v == null) return <span className="text-gray-500">—</span>;
+  return <span>{v} min</span>;
+}
+
+export default async function ModulosCatalogoPage({
   searchParams,
-}: {
-  searchParams?: SP;
-}) {
-  // --- Normaliza searchParams (await si es promesa) y extrae `q` de forma segura
+}: { searchParams?: SP }) {
+  // Normaliza searchParams (Next 15 puede pasarlos como Promise)
   let q = '';
   if (searchParams) {
     const sp: SPObj =
       typeof (searchParams as any)?.then === 'function'
         ? await (searchParams as Promise<SPObj>)
         : ((searchParams as SPObj) ?? {});
-
     const raw = sp.q;
     if (typeof raw === 'string') q = raw.trim();
     else if (Array.isArray(raw)) q = (raw[0] ?? '').trim();
   }
 
+  // Requiere sesión
   const session = await auth();
   if (!session?.user?.email) {
     return (
@@ -63,35 +51,23 @@ export default async function CatalogoModulosPage({
     );
   }
 
+  // (opcional) cargar usuario si necesitas rol
   const me = await fetchUserByEmail(session.user.email);
-  if (!me) {
-    return (
-      <main className="p-6">
-        <div className="rounded-lg border bg-white p-6 text-sm text-red-600">
-          Usuario no encontrado.
-        </div>
-      </main>
-    );
-  }
+  const isInstructor = me?.rol === 'instructor';
 
-  const isInstructor = me.rol === 'instructor';
-  const rows = isInstructor
-    ? await fetchModulosCatalogoAll(q)
-    : await fetchModulosCatalogoForUser(me.id, q);
+  const rows = await fetchModulosCatalogo(q);
 
   return (
-    <main className="p-6">
-      <div className="mb-4 flex items-end justify-between gap-3">
+    <main className="p-6 space-y-4">
+      <header className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Catálogo de Módulos</h1>
+          <h1 className="text-2xl font-semibold">Módulos</h1>
           <p className="text-sm text-gray-500">
-            {isInstructor
-              ? 'Listado completo de módulos.'
-              : 'Módulos en los que tienes sesiones.'}
+            Explora los módulos disponibles. Haz clic para ver el detalle.
           </p>
         </div>
 
-        {/* Buscador simple por código/título/creador */}
+        {/* Buscador simple GET */}
         <form className="flex items-center gap-2" action="/dashboard/modulos/catalogo" method="GET">
           <input
             name="q"
@@ -103,64 +79,55 @@ export default async function CatalogoModulosPage({
             Buscar
           </button>
         </form>
-      </div>
+      </header>
 
-      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold">Código</th>
-              <th className="px-4 py-3 text-left font-semibold">Título</th>
-              <th className="px-4 py-3 text-left font-semibold">Descripción</th>
-              <th className="px-4 py-3 text-left font-semibold">Estado</th>
-              <th className="px-4 py-3 text-left font-semibold">Dificultad</th>
-              <th className="px-4 py-3 text-left font-semibold">Tiempo (min)</th>
-              <th className="px-4 py-3 text-left font-semibold">Creado por</th>
-              <th className="px-4 py-3 text-left font-semibold">Creado en</th>
-              <th className="px-4 py-3 text-left font-semibold">Actualizado</th>
-              <th className="px-4 py-3 text-right font-semibold">Sesiones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {rows.map((m) => (
-              <tr key={m.id}>
-                <td className="px-4 py-3 font-mono text-xs">{m.codigo}</td>
-                <td className="px-4 py-3">{m.titulo}</td>
-                <td className="max-w-[360px] truncate px-4 py-3" title={m.descripcion ?? ''}>
-                  {m.descripcion ?? '—'}
-                </td>
-                <td className="px-4 py-3 capitalize">
-                  <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                    {m.estado ?? '—'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 capitalize">{m.dificultad ?? '—'}</td>
-                <td className="px-4 py-3">{m.tiempo_estimado_min ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <CreatedByCell {...m} />
-                </td>
-                <td className="whitespace-nowrap px-4 py-3">{fmtDate(m.creado_en)}</td>
-                <td className="whitespace-nowrap px-4 py-3">{fmtDate(m.actualizado_en)}</td>
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/dashboard/sesiones?modulo_id=${m.id}`}
-                    className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                  >
-                    Ver sesiones
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
-                  Sin módulos para mostrar.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Grid de tarjetas */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((m: ModuloCatalogo) => (
+          <Link
+            key={m.id}
+            href={`/dashboard/modulos/${m.id}`}  // Asegúrate de que la ruta incluye correctamente "overview"
+            className="group rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="font-mono text-xs text-gray-600">{m.codigo}</span>
+              <div className="flex items-center gap-2">
+                <Chip>{m.estado ?? '—'}</Chip>
+                {m.dificultad && <Chip>{m.dificultad}</Chip>}
+              </div>
+            </div>
+
+            <h3 className="line-clamp-1 text-base font-semibold">{m.titulo}</h3>
+            <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+              {m.descripcion ?? 'Sin descripción.'}
+            </p>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+              <span>{m.creado_por_nombre ?? m.creado_por_correo ?? '—'}</span>
+              <Minutes v={m.tiempo_estimado_min} />
+            </div>
+
+            <div className="mt-3 text-right">
+              <span className="text-blue-600 text-sm group-hover:underline">
+                Ver detalle →
+              </span>
+            </div>
+          </Link>
+        ))}
+
+        {rows.length === 0 && (
+          <div className="col-span-full rounded-lg border bg-white p-8 text-center text-gray-500">
+            No hay módulos para mostrar.
+          </div>
+        )}
+      </section>
+
+      {/* Zona para acciones rápidas solo para instructores */}
+      {isInstructor && (
+        <div className="rounded-lg border bg-white p-4 text-sm text-gray-600">
+          Zona de acciones (futuro CRUD): aquí puedes agregar botones para crear/editar.
+        </div>
+      )}
     </main>
   );
 }

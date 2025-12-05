@@ -6,6 +6,17 @@ import Link from 'next/link';
 import AcmeLogo from '@/app/ui/acme-logo';
 import { EyeIcon, EyeSlashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
+type RegisterResponse = {
+  ok: boolean;
+  user?: {
+    id: string | number;
+    isActive?: boolean;   
+    estado?: 'activo' | 'inactivo'; 
+    [k: string]: any;
+  };
+  error?: string;
+};
+
 export default function RegisterTechnicianPage() {
   const router = useRouter();
   const [nombreCompleto, setNombreCompleto] = useState('');
@@ -15,6 +26,9 @@ export default function RegisterTechnicianPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // controla el modal de "pendiente de activación"
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,13 +41,27 @@ export default function RegisterTechnicianPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombreCompleto, email, password }),
       });
-      const data = await res.json();
+
+      const data: RegisterResponse = await res.json();
 
       if (!res.ok || !data.ok) {
         setErr(data?.error ?? 'No se pudo registrar.');
       } else {
-        setMsg('¡Cuenta creada exitosamente! Ya puedes iniciar sesión.');
-        setTimeout(() => router.push('/login?registered=1'), 1200);
+        // Mensaje general
+        setMsg('¡Cuenta creada exitosamente!');
+
+        // Determinar si el usuario está activo según lo que devuelva tu API
+        const activo =
+          (data.user?.isActive === true) ||
+          (data.user?.estado === 'activo');
+
+        if (!activo) {
+          // Mostrar modal de cuenta desactivada
+          setShowPendingModal(true);
+        } else {
+          // Si por alguna razón se crea activa, puedes redirigir
+          setTimeout(() => router.push('/login?registered=1'), 1200);
+        }
       }
     } catch (e: any) {
       setErr(e?.message ?? 'Error inesperado');
@@ -47,9 +75,8 @@ export default function RegisterTechnicianPage() {
       <div className="relative mx-auto w-full max-w-md">
         {/* Efecto de fondo decorativo */}
         <div className="absolute -inset-4 bg-gradient-to-r from-blue-400/20 to-yellow-400/20 rounded-3xl blur-3xl"></div>
-        
+
         <div className="relative rounded-3xl bg-white/95 backdrop-blur-sm p-8 shadow-2xl border border-white/20">
-          
           {/* Logo y título */}
           <div className="text-center mb-8">
             <div className="mb-6 flex justify-center">
@@ -57,7 +84,7 @@ export default function RegisterTechnicianPage() {
                 <AcmeLogo />
               </div>
             </div>
-            
+
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Registro de <span className="text-blue-600">Técnico</span>
             </h1>
@@ -117,6 +144,7 @@ export default function RegisterTechnicianPage() {
                   onClick={() => setShowPass((s) => !s)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   disabled={loading}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPass ? (
                     <EyeSlashIcon className="h-5 w-5" />
@@ -150,7 +178,7 @@ export default function RegisterTechnicianPage() {
                 <p className="text-sm text-green-700 text-center">{msg}</p>
               </div>
             )}
-            
+
             {err && (
               <div className="rounded-xl bg-red-50 p-4 border border-red-200">
                 <p className="text-sm text-red-700 text-center">{err}</p>
@@ -159,9 +187,10 @@ export default function RegisterTechnicianPage() {
 
             {/* Enlace para login */}
             <div className="text-center text-sm text-gray-600">
-              <p>¿Ya tienes cuenta?{' '}
-                <Link 
-                  href="/login" 
+              <p>
+                ¿Ya tienes cuenta?{' '}
+                <Link
+                  href="/login"
                   className="font-semibold text-blue-600 hover:text-blue-700 underline"
                 >
                   Inicia sesión aquí
@@ -202,6 +231,53 @@ export default function RegisterTechnicianPage() {
           </p>
         </div>
       </div>
+
+      {/* MODAL: Cuenta creada pero desactivada */}
+      {showPendingModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 text-center">
+                Cuenta creada, pendiente de activación
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 text-center">
+                Tu cuenta ha sido creada pero aún <span className="font-semibold">no está activa</span>.
+                Por favor, <span className="font-semibold">contacta al administrador o al encargado de área</span> para habilitar tu acceso.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+              <ul className="list-disc ml-5 space-y-1">
+                <li>No podrás iniciar sesión hasta que tu cuenta sea activada.</li>
+                <li>Te notificaremos cuando el estado cambie a <strong>activo</strong>.</li>
+              </ul>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowPendingModal(false)}
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Seguir aquí
+              </button>
+              <button
+                onClick={() => router.push('/login?pending=1')}
+                className="flex-1 rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+              >
+                Ir a iniciar sesión
+              </button>
+            </div>
+
+            <p className="mt-4 text-xs text-gray-500 text-center">
+              Si necesitas ayuda, escribe a soporte o a tu encargado de área.
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

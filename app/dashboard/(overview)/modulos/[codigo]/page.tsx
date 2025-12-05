@@ -1,18 +1,23 @@
 // app/dashboard/(overview)/modulos/[codigo]/page.tsx
+
 import { fetchModuloDetalle } from '@/app/lib/imcruz';
 import { notFound } from 'next/navigation';
-export const dynamic = 'force-dynamic';
 
+// Marca la función como async y usa await correctamente
 export default async function ModuloDetallePage({ params }: { params: { codigo: string } }) {
-  const data = await fetchModuloDetalle(params.codigo);
-  if (!data) return notFound();
+  // Espera a que se resuelva el valor de params.codigo
+  const data = await fetchModuloDetalle(params.codigo);  // Usa el código para obtener los datos
 
-  const { modulo, pasos } = data;
+  if (!data) {
+    return notFound();  // Si no se encuentra, devuelve un 404
+  }
+
+  const { modulo, pasos } = data; // Aquí puedes acceder a los datos correctamente
 
   return (
     <main className="p-6 space-y-6">
       <div>
-        <a href="/dashboard/(overview)/modulos" className="text-sm underline opacity-70">
+        <a href="/dashboard/modulos" className="text-sm underline opacity-70">
           ← Volver a módulos
         </a>
       </div>

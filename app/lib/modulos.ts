@@ -6,71 +6,91 @@ export type ModuloCatalogo = {
   codigo: string;
   titulo: string;
   descripcion: string | null;
-  estado: string | null;
-  dificultad: string | null;
+  estado: 'borrador' | 'activo' | 'inactivo' | null;
+  dificultad: 'facil' | 'medio' | 'dificil' | null;
   tiempo_estimado_min: number | null;
-  creado_en: string | null;
-  actualizado_en: string | null;
+  creado_por: string | null;
   creado_por_nombre: string | null;
   creado_por_correo: string | null;
-  sesiones_count: number;
+  creado_en: string;
+  actualizado_en: string;
 };
 
-// Helper pequeño para construir el WHERE opcional
-function whereFilter(q?: string) {
-  if (!q) return sql``;
-  const like = `%${q}%`;
-  return sql`WHERE (m.codigo ILIKE ${like} OR u.nombre_completo ILIKE ${like} OR u.correo ILIKE ${like})`;
-}
-
-export async function fetchModulosCatalogoAll(q?: string): Promise<ModuloCatalogo[]> {
-  const rows = await sql<ModuloCatalogo[]>`
+export async function fetchModulosCatalogoAll(q = ''): Promise<ModuloCatalogo[]> {
+  const like = `%${q}%`.toLowerCase();
+  const rows = await sql<ModuloCatalogo[]>/*sql*/`
     SELECT
-      m.id,
-      m.codigo,
-      m.titulo,
-      m.descripcion,
-      m.estado::text AS estado,
-      m.dificultad::text AS dificultad,
-      m.tiempo_estimado_min,
-      m.creado_en,
-      m.actualizado_en,
-      u.nombre_completo AS creado_por_nombre,
-      u.correo AS creado_por_correo,
-      COALESCE((
-        SELECT COUNT(*)::int FROM public.sesiones_vr s WHERE s.modulo_id = m.id
-      ), 0) AS sesiones_count
+      m.id, m.codigo, m.titulo, m.descripcion, m.estado, m.dificultad, m.tiempo_estimado_min,
+      m.creado_por, u.nombre AS creado_por_nombre, u.correo AS creado_por_correo,
+      m.creado_en, m.actualizado_en
     FROM public.modulos m
     LEFT JOIN public.usuarios u ON u.id = m.creado_por
-    ${whereFilter(q)}
+    WHERE ${q === ''} OR (
+      lower(m.codigo) LIKE ${like}
+      OR lower(m.titulo) LIKE ${like}
+      OR lower(coalesce(u.nombre, '')) LIKE ${like}
+      OR lower(coalesce(u.correo, '')) LIKE ${like}
+    )
     ORDER BY m.codigo ASC
   `;
   return rows;
 }
 
-export async function fetchModulosCatalogoForUser(userId: string, q?: string): Promise<ModuloCatalogo[]> {
-  const rows = await sql<ModuloCatalogo[]>`
-    SELECT DISTINCT ON (m.id)
-      m.id,
-      m.codigo,
-      m.titulo,
-      m.descripcion,
-      m.estado::text AS estado,
-      m.dificultad::text AS dificultad,
-      m.tiempo_estimado_min,
-      m.creado_en,
-      m.actualizado_en,
-      u.nombre_completo AS creado_por_nombre,
-      u.correo AS creado_por_correo,
-      COALESCE((
-        SELECT COUNT(*)::int FROM public.sesiones_vr s WHERE s.modulo_id = m.id AND s.usuario_id = ${userId}
-      ), 0) AS sesiones_count
-    FROM public.sesiones_vr sv
-    JOIN public.modulos m ON m.id = sv.modulo_id
+export async function fetchModulosCatalogoForUser(userId: string, q = ''): Promise<ModuloCatalogo[]> {
+  // Ajusta este JOIN si tu relación user↔sesiones↔módulos es distinta.
+  const like = `%${q}%`.toLowerCase();
+  const rows = await sql<ModuloCatalogo[]>/*sql*/`
+    SELECT
+      m.id, m.codigo, m.titulo, m.descripcion, m.estado, m.dificultad, m.tiempo_estimado_min,
+      m.creado_por, u.nombre AS creado_por_nombre, u.correo AS creado_por_correo,
+      m.creado_en, m.actualizado_en
+    FROM public.modulos m
     LEFT JOIN public.usuarios u ON u.id = m.creado_por
-    WHERE sv.usuario_id = ${userId}
-    ${q ? sql`AND (m.codigo ILIKE ${'%' + q + '%'} OR u.nombre_completo ILIKE ${'%' + q + '%'} OR u.correo ILIKE ${'%' + q + '%'})` : sql``}
-    ORDER BY m.id, m.codigo ASC
+    WHERE EXISTS (
+      SELECT 1
+      FROM public.sesiones s
+      WHERE s.modulo_id = m.id AND s.usuario_id = ${userId}
+    )
+    AND (
+      ${q === ''} OR
+      lower(m.codigo) LIKE ${like}
+      OR lower(m.titulo) LIKE ${like}
+      OR lower(coalesce(u.nombre, '')) LIKE ${like}
+      OR lower(coalesce(u.correo, '')) LIKE ${like}
+    )
+    ORDER BY m.codigo ASC
   `;
   return rows;
 }
+export async function fetchModuloById(id: string): Promise<ModuloCatalogo | null> {
+  const rows = await sql<ModuloCatalogo[]>/*sql*/`
+    SELECT
+      m.id, m.codigo, m.titulo, m.descripcion, m.estado, m.dificultad, m.tiempo_estimado_min,
+      m.creado_por, u.nombre AS creado_por_nombre, u.correo AS creado_por_correo,
+      m.creado_en, m.actualizado_en
+    FROM public.modulos m
+    LEFT JOIN public.usuarios u ON u.id = m.creado_por
+    WHERE m.id = ${id}
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+export async function fetchModulosCatalogo(q: string = ''): Promise<ModuloCatalogo[]> {
+  const like = `%${q}%`.toLowerCase();
+  const rows = await sql<ModuloCatalogo[]>/*sql*/`
+    SELECT m.*,
+           u.nombre AS creado_por_nombre,
+           u.correo AS creado_por_correo
+    FROM public.modulos m
+    LEFT JOIN public.usuarios u ON u.id = m.creado_por
+    WHERE ${q === ''} OR (
+      lower(m.codigo) LIKE ${like}
+      OR lower(m.titulo) LIKE ${like}
+      OR lower(coalesce(u.nombre, '')) LIKE ${like}
+      OR lower(coalesce(u.correo, '')) LIKE ${like}
+    )
+    ORDER BY m.codigo ASC
+  `;
+  return rows;
+}
+

@@ -6,7 +6,7 @@ export const authConfig = {
   session: { strategy: 'jwt' },
   callbacks: {
     authorized({ auth, request }) {
-      // ⚠️ No interceptar Server Actions ni métodos != GET
+ 
       if (request.method !== 'GET' || request.headers.get('next-action')) {
         return true;
       }

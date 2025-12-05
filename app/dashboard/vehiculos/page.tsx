@@ -1,6 +1,5 @@
 // app/dashboard/vehiculos/page.tsx
 import NextAuth from 'next-auth';
-//import { auth } from '@/auth';
 import { fetchUserByEmail } from '@/app/lib/users';
 import { fetchMarcas, fetchModelosVehiculo } from '@/app/lib/vehiculos';
 import {
@@ -10,13 +9,13 @@ import {
 import { authConfig } from '@/auth.config';
 
 export const { auth } = NextAuth(authConfig);
-
 export const dynamic = 'force-dynamic';
 
 export default async function VehiculosPage({
   searchParams,
 }: {
-  searchParams?: { ok?: string; err?: string };
+  // 👇 importante: Promise<...> para Next 15 / App Router
+  searchParams?: Promise<{ ok?: string; err?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.email) {
@@ -28,8 +27,9 @@ export default async function VehiculosPage({
   }
 
   const [marcas, modelos] = await Promise.all([fetchMarcas(), fetchModelosVehiculo()]);
-  const ok = searchParams?.ok;
-  const err = searchParams?.err;
+  const sp = await searchParams;
+  const ok = sp?.ok;
+  const err = sp?.err;
 
   return (
     <main className="p-6 space-y-6">
@@ -38,9 +38,16 @@ export default async function VehiculosPage({
         <p className="text-sm text-gray-500">CRUD de Marcas y Modelos (solo instructores).</p>
       </header>
 
-      {/* Mensajes de estado */}
       {(ok || err) && (
-        <div className={`rounded-md border px-3 py-2 text-sm ${ok ? 'border-green-300 bg-green-50 text-green-700' : 'border-red-300 bg-red-50 text-red-700'}`}>
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-md border px-3 py-2 text-sm ${
+            ok
+              ? 'border-green-300 bg-green-50 text-green-700'
+              : 'border-red-300 bg-red-50 text-red-700'
+          }`}
+        >
           {ok ?? err}
         </div>
       )}
@@ -49,21 +56,24 @@ export default async function VehiculosPage({
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Marcas</h2>
 
-        {/* Crear Marca */}
         <form action={createMarca} className="flex flex-wrap items-end gap-2 rounded-md border bg-white p-3">
           <div className="flex-1 min-w-[240px]">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
+            <label htmlFor="nombre-marca" className="block text-xs font-medium text-gray-700 mb-1">
+              Nombre
+            </label>
             <input
+              id="nombre-marca"
               name="nombre"
               placeholder="Ej: Toyota"
               className="w-full rounded-md border px-3 py-2 text-sm"
               required
             />
           </div>
-          <button className="rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">Crear marca</button>
+          <button className="rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">
+            Crear marca
+          </button>
         </form>
 
-        {/* Tabla Marcas */}
         <div className="overflow-x-auto rounded-md border bg-white">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
@@ -89,8 +99,16 @@ export default async function VehiculosPage({
                       <button className="rounded-md border px-2 py-1 hover:bg-gray-50">Guardar</button>
                     </form>
                   </td>
-                  <td className="px-3 py-2">{new Date(m.creado_en).toLocaleString()}</td>
-                  <td className="px-3 py-2">{new Date(m.actualizado_en).toLocaleString()}</td>
+                  <td className="px-3 py-2">
+                    <time dateTime={m.creado_en}>
+                      {new Date(m.creado_en).toLocaleString('es-BO')}
+                    </time>
+                  </td>
+                  <td className="px-3 py-2">
+                    <time dateTime={m.actualizado_en}>
+                      {new Date(m.actualizado_en).toLocaleString('es-BO')}
+                    </time>
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <form action={deleteMarca} className="inline">
                       <input type="hidden" name="id" value={m.id} />
@@ -102,7 +120,11 @@ export default async function VehiculosPage({
                 </tr>
               ))}
               {marcas.length === 0 && (
-                <tr><td className="px-3 py-4 text-center text-gray-500" colSpan={4}>No hay marcas.</td></tr>
+                <tr>
+                  <td className="px-3 py-4 text-center text-gray-500" colSpan={4}>
+                    No hay marcas.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -113,7 +135,6 @@ export default async function VehiculosPage({
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Modelos</h2>
 
-        {/* Crear Modelo */}
         <form action={createModelo} className="flex flex-wrap items-end gap-2 rounded-md border bg-white p-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Marca</label>
@@ -136,10 +157,11 @@ export default async function VehiculosPage({
             <label className="block text-xs font-medium text-gray-700 mb-1">Año hasta (opcional)</label>
             <input type="number" name="anio_hasta" min={1886} className="w-32 rounded-md border px-3 py-2 text-sm" />
           </div>
-          <button className="rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">Crear modelo</button>
+          <button className="rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">
+            Crear modelo
+          </button>
         </form>
 
-        {/* Tabla Modelos (editable por fila) */}
         <div className="overflow-x-auto rounded-md border bg-white">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
@@ -157,20 +179,17 @@ export default async function VehiculosPage({
                   <td className="px-3 py-2">
                     <form action={updateModelo} className="grid grid-cols-1 gap-2 sm:grid-cols-5 sm:items-center">
                       <input type="hidden" name="id" value={mv.id} />
-                      {/* Marca */}
                       <select name="marca_id" defaultValue={mv.marca_id} className="rounded-md border px-2 py-1 sm:col-span-1">
                         {marcas.map((m) => (
                           <option key={m.id} value={m.id}>{m.nombre}</option>
                         ))}
                       </select>
-                      {/* Nombre */}
                       <input
                         name="nombre"
                         defaultValue={mv.nombre}
                         className="rounded-md border px-2 py-1 sm:col-span-2"
                         required
                       />
-                      {/* Años */}
                       <input
                         type="number"
                         name="anio_desde"
@@ -191,19 +210,25 @@ export default async function VehiculosPage({
                       </div>
                     </form>
                   </td>
-                  <td className="px-3 py-2">{/* vacío: los inputs de arriba ocupan fila */}</td>
+                  <td className="px-3 py-2"></td>
                   <td className="px-3 py-2"></td>
                   <td className="px-3 py-2"></td>
                   <td className="px-3 py-2 text-right">
                     <form action={deleteModelo} className="inline">
                       <input type="hidden" name="id" value={mv.id} />
-                      <button className="rounded-md border px-2 py-1 text-red-600 hover:bg-red-50">Eliminar</button>
+                      <button className="rounded-md border px-2 py-1 text-red-600 hover:bg-red-50">
+                        Eliminar
+                      </button>
                     </form>
                   </td>
                 </tr>
               ))}
               {modelos.length === 0 && (
-                <tr><td className="px-3 py-4 text-center text-gray-500" colSpan={5}>No hay modelos.</td></tr>
+                <tr>
+                  <td className="px-3 py-4 text-center text-gray-500" colSpan={5}>
+                    No hay modelos.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

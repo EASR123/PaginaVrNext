@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { fetchAllUsers, fetchUserByEmail } from '@/app/lib/users';
 import RoleForm from './RoleForm';
 import ActiveForm from './ActiveForm';
+import ProfileForm from './ProfileForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,11 @@ export default async function UsersPage() {
             </div>
           </div>
         </div>
+        {/* Formulario edición */}
+        <section>
+          <h2 className="text-lg font-semibold mb-2">Editar información</h2>
+          <ProfileForm user={me} />
+        </section>
       </main>
     );
   }
@@ -73,13 +79,14 @@ export default async function UsersPage() {
   const users = await fetchAllUsers();
 
   return (
-    <main className="p-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold">Usuarios</h1>
-        <p className="text-sm text-gray-500">
-          Gestiona roles y estado de usuarios.
-        </p>
-      </div>
+    <main className="p-6 space-y-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Usuarios</h1>
+          <p className="text-sm text-gray-500">Gestiona roles y estado de usuarios.</p>
+        </div>
+        <ProfileForm user={me} /> {/* Botón editar perfil para instructor */}
+      </header>
 
       <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
         <table className="min-w-full divide-y divide-gray-200 text-sm">

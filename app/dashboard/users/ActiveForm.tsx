@@ -22,7 +22,7 @@ function SubmitButton({ label, labelPending }: { label: string; labelPending: st
 }
 
 interface ActiveFormProps {
-  user: Usuarios; // <-- recibe el usuario completo
+  user: Usuarios; 
 }
 
 export default function ActiveForm({ user }: ActiveFormProps) {
